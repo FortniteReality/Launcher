@@ -1,0 +1,15 @@
+# Directories
+.vs/
+.idea/
+RealityLauncher/bin/
+RealityLauncher/bin-int/
+RealityLauncher/obj/
+
+# Premake
+scripts/__pycache__/
+vendor/premake/bin/
+
+# Files
+*.user
+*.sln
+*.csproj
