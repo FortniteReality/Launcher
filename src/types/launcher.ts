@@ -5,9 +5,13 @@ export interface ErrorState {
 }
 
 export interface InstallState {
-  isInstalling: boolean
+	isInstalling: boolean
 	progress: number
 	location: string
+	downloadSpeed?: number
+	eta?: number
+	lastUpdateTime?: number
+	lastDownloadedBytes?: number
 }
 
 export interface VerifyState {

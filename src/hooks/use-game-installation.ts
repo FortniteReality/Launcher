@@ -11,7 +11,9 @@ export const useGameInstallation = (
 	const [installState, setInstallState] = useState<InstallState>({
 		isInstalling: false,
 		progress: 0,
-		location: ""
+		location: "",
+		downloadSpeed: 0,
+		eta: 0
 	})
 	const [verifyState, setVerifyState] = useState<VerifyState>({
 		isVerifying: false,
@@ -40,6 +42,10 @@ export const useGameInstallation = (
 		}
 	}, [])
 
+	// Keep a rolling average of download speeds to smooth out fluctuations
+	let speedHistory: number[] = []
+	const MAX_SPEED_SAMPLES = 10
+
 	const monitorInstallProgress = useCallback(async () => {
 		try {
 			const updates = await GameService.getProgressUpdates()
@@ -54,7 +60,47 @@ export const useGameInstallation = (
 			
 			const percent = isComplete ? 100 : Math.min((last.downloaded_bytes / last.total_bytes) * 100, 100)
 
-			setInstallState(prev => ({ ...prev, progress: percent }))
+			// Calculate download speed and ETA
+			const currentTime = Date.now()
+			let avgDownloadSpeeed: number | undefined
+			let eta: number | undefined
+
+			setInstallState(prev => {
+				// Calculate speed if we have previous data
+				if (prev.lastUpdateTime && prev.lastDownloadedBytes !== undefined) {
+					const timeDelta = (currentTime - prev.lastUpdateTime) / 1000 // seconds
+					const bytesDelta = last.downloaded_bytes - prev.lastDownloadedBytes
+					
+					if (timeDelta > 0 && bytesDelta > 0) {
+						const instantSpeed = bytesDelta / timeDelta
+
+						speedHistory.push(instantSpeed)
+
+						if (speedHistory.length > MAX_SPEED_SAMPLES) {
+							speedHistory = speedHistory.slice(-MAX_SPEED_SAMPLES)
+						}
+
+						if (speedHistory.length > 0) {
+							avgDownloadSpeeed = speedHistory.reduce((sum, speed) => sum + speed, 0) / speedHistory.length
+
+							// Calculate ETA based on remaining bytes and current speed
+							const remainingBytes = last.total_bytes - last.downloaded_bytes
+							if (avgDownloadSpeeed > 0 && !isComplete) {
+								eta = remainingBytes / avgDownloadSpeeed
+							}
+						}
+					}
+				}
+
+				return {
+					...prev,
+					progress: percent,
+					downloadSpeed: avgDownloadSpeeed ?? prev.downloadSpeed,
+					eta: eta ?? prev.eta,
+					lastUpdateTime: currentTime,
+					lastDownloadedBytes: last.downloaded_bytes
+				}
+			})
 
 			if (percent >= 100 || isComplete) {
 				if (installIntervalRef.current) {
@@ -62,7 +108,17 @@ export const useGameInstallation = (
 					installIntervalRef.current = null
 				}
 
-				setInstallState(prev => ({ ...prev, isInstalling: false, progress: 100 }))
+				speedHistory = []
+
+				setInstallState(prev => ({
+					...prev,
+					isInstalling: false,
+					progress: 100,
+					downloadSpeed: undefined,
+					eta: undefined,
+					lastUpdateTime: undefined,
+					lastDownloadedBytes: undefined
+				}))
 				setGameInstalled(true)
 
 				try {
@@ -202,10 +258,16 @@ export const useGameInstallation = (
 	}, [onError])
 
 	const startInstallation = useCallback(async (path: string) => {
+		speedHistory = []
+		
 		setInstallState({
 			isInstalling: true,
 			progress: 0,
-			location: path
+			location: path,
+			downloadSpeed: undefined,
+			eta: undefined,
+			lastUpdateTime: undefined,
+			lastDownloadedBytes: undefined
 		})
 		setInstallLocation(path)
 
@@ -217,7 +279,15 @@ export const useGameInstallation = (
 				clearInterval(installIntervalRef.current)
 				installIntervalRef.current = null
 			}
-			setInstallState({ isInstalling: false, progress: 0, location: "" })
+			setInstallState({
+				isInstalling: false,
+				progress: 0,
+				location: "",
+				downloadSpeed: undefined,
+				eta: undefined,
+				lastUpdateTime: undefined,
+				lastDownloadedBytes: undefined
+			})
 			onError("Installation Error", `Failed to start installation: ${error}`)
 		}
 	}, [monitorInstallProgress, onError])
