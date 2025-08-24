@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { GameService } from "../services/game-service"
+import { discordService } from "../services/discord-service"
 
 export const useGameLauncher = (
 	onError: (title: string, message: string) => void
@@ -61,7 +62,7 @@ export const useGameLauncher = (
 			
 			if (!gameIsPlaying && isPlayingRef.current) {
 				setIsPlaying(false)
-				await invoke("set_idle_activity")
+				await discordService.setIdle()
 				
 				if (isMinimizedRef.current) {
 					await restoreWindow()
@@ -90,7 +91,7 @@ export const useGameLauncher = (
 
 			await new Promise(resolve => setTimeout(resolve, 8000))
 
-			await invoke("set_playing_activity")
+			await discordService.setPlaying()
 			
 			startPolling()
 			await minimizeWindow()

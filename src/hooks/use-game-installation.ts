@@ -44,7 +44,7 @@ export const useGameInstallation = (
 
 	// Keep a rolling average of download speeds to smooth out fluctuations
 	let speedHistory: number[] = []
-	const MAX_SPEED_SAMPLES = 10
+	const MAX_SPEED_SAMPLES = 20
 
 	const monitorInstallProgress = useCallback(async () => {
 		try {
@@ -259,7 +259,7 @@ export const useGameInstallation = (
 
 	const startInstallation = useCallback(async (path: string) => {
 		speedHistory = []
-		
+
 		setInstallState({
 			isInstalling: true,
 			progress: 0,
