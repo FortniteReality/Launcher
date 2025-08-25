@@ -330,20 +330,15 @@ impl GameLauncher {
         self.validate_paths()?;
         self.validate_launch_arguments()?;
 
+        let launch_args = self.build_launch_arguments();
         let binaries_path = self.get_binaries_directory();
         let reality_launcher_path = binaries_path.join("RealityLauncher.exe");
-        let launch_args = self.build_launch_arguments();
 
         // Launch RealityLauncher.exe with binaries directory as working directory
         self.process_manager.launch_process_via_cmd(&reality_launcher_path, &launch_args, &binaries_path)?;
 
         // Wait for initialization
         thread::sleep(self.config.initialization_delay);
-
-        // Monitor the game process
-        while self.process_manager.is_running() {
-            thread::sleep(Duration::from_secs(1));
-        }
 
         // Process has exited
         Ok(true)

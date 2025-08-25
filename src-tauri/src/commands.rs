@@ -1,5 +1,6 @@
 use base64::prelude::BASE64_STANDARD;
 use tokio::sync::mpsc;
+use win_msgbox::Okay;
 
 use crate::auth::{generate_exchange, login_client, login_user, AccountInfo, AuthError, Services};
 use crate::cache::{get_account_info, get_client_token};
@@ -305,6 +306,12 @@ pub async fn download_complete(
     install_dir: String
 ) -> Result<(), ManifestError> {
     mark_current_manifest_as_complete(&install_dir).await
+}
+
+/// Sends a Win32 message box with an OK button
+#[tauri::command]
+pub fn message_box_okay(message: String) {
+    let _ = win_msgbox::show::<Okay>(message.as_str());
 }
 
 /// Marks the game as uninstalled by removing everything

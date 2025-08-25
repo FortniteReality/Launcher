@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react"
 import { GameService } from "../services/game-service"
 import { InstallState, VerifyState, UninstallState } from "../types/launcher"
+import { invoke } from "@tauri-apps/api/core"
 
 export const useGameInstallation = (
 	gameId: string,
@@ -29,6 +30,7 @@ export const useGameInstallation = (
 	const installIntervalRef = useRef<number | null>(null)
 	const verifyIntervalRef = useRef<number | null>(null)
 	const uninstallIntervalRef = useRef<number | null>(null)
+	const currentInstallPathRef = useRef<string>("")
 
 	const checkInstallation = useCallback(async () => {
 		try {
@@ -122,7 +124,7 @@ export const useGameInstallation = (
 				setGameInstalled(true)
 
 				try {
-					await GameService.downloadComplete(installLocation)
+					await GameService.downloadComplete(currentInstallPathRef.current.replace(/\\\\/g, "/"))
 				} catch (error) {
 					onError("Installation Complete Error", "Installation finished but failed to finalize.")
 				}
@@ -130,7 +132,7 @@ export const useGameInstallation = (
 		} catch (error) {
 			console.error("Failed to fetch progress:", error)
 		}
-	}, [installLocation, onError])
+	}, [onError])
 
 	const monitorVerifyProgress = useCallback(async () => {
 		try {
@@ -259,6 +261,7 @@ export const useGameInstallation = (
 
 	const startInstallation = useCallback(async (path: string) => {
 		speedHistory = []
+		currentInstallPathRef.current = path // Store the path in ref
 
 		setInstallState({
 			isInstalling: true,
@@ -279,6 +282,8 @@ export const useGameInstallation = (
 				clearInterval(installIntervalRef.current)
 				installIntervalRef.current = null
 			}
+			currentInstallPathRef.current = "" // Clear ref on error
+			speedHistory = []
 			setInstallState({
 				isInstalling: false,
 				progress: 0,
@@ -299,14 +304,15 @@ export const useGameInstallation = (
 		}
 
 		try {
-			await GameService.cancelDownload(installState.location);
+			await GameService.cancelDownload(currentInstallPathRef.current);
 		} catch (error) {
 			console.error("Error cancelling download:", error)
 			onError("Cancellation Error", `Failed to cancel installation: ${error}`)
 		}
 
+		currentInstallPathRef.current = "" // Clear ref
 		setInstallState({ isInstalling: false, progress: 0, location: "" })
-	}, [installState.location, onError])
+	}, [onError])
 
 	const startVerification = useCallback(async () => {
 		if (!gameInstalled) return

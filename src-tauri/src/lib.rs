@@ -34,6 +34,7 @@ pub fn run() {
             resume_download,
             start_download,
             download_complete,
+            message_box_okay,
             uninstall_complete,
             start_verify,
             start_uninstall,

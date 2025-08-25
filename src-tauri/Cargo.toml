@@ -47,4 +47,5 @@ libloading = "0.8.8"
 windows = "0.61.3"
 tokio-util = "0.7.16"
 discord-rich-presence = "0.2.5"
+win-msgbox = "0.2.1"
 
